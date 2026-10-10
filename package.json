@@ -1,0 +1,53 @@
+{
+  "name": "dsh-ponytail",
+  "version": "1.0.0",
+  "description": "ponytail（懒散资深工程师模式）三档强度 + 对话输入栏「懒散等级」下拉：选中档位即把 /ponytail lite|full|ultra 钉进草稿，发送时由宿主注入对应技能。随包分发 ponytail / ponytail-review / ponytail-audit 三个技能。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "skills",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "cordis",
+    "skill",
+    "ponytail",
+    "yagni",
+    "web-ui"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ],
+      "platform": "web"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SHUNJIANBAO/dsh-ponytail.git"
+  },
+  "scripts": {
+    "test": "node test/offline-regression.mjs"
+  }
+}

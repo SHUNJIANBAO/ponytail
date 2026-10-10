@@ -1,0 +1,4 @@
+# 保持字节原样：禁用一切行尾转换。
+# 本仓库里的 SKILL.md 是逐字照搬的技能正文，checkout 时 LF → CRLF 会改动字节；
+# 而且 Windows 全局 core.autocrlf=true 时，git 会在 add 阶段就报警告并改写。
+* -text
