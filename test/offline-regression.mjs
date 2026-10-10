@@ -400,4 +400,62 @@ function mountControl() {
   check("token 后接换行也算终止", f.shown === "极简");
 }
 
+// ── 23. 与「追问」按钮共存：token 在草稿任意位置都要认得 ──
+// 复现过的 bug：先选档位 → 点追问（把 /grill-me 前插到草稿最前面）→ 再切档位。
+// token 处理锚定 `^` 的话，切档位时找不到、也摘不掉旧的 ponytail token，
+// 新 token 被前插、旧的留在后面 —— 草稿里堆出两个，宿主把两个技能都注入，
+// 表现成「多个档位同时生效」。
+{
+  console.log("\n23. 与追问按钮共存（token 不在开头）");
+  const f = mountControl();
+  f.pick("ultra");
+  check("先选极简", f.draft === "/ponytail-ultra ");
+  f.setDraftExternally("/grill-me " + f.draft); // 追问按钮 withToken() 前插
+  check("追问前插后，下拉仍认出极简", f.shown === "极简" && f.on === true);
+
+  f.pick("lite");
+  check("切轻量后 ponytail token 只有一个", (f.draft.match(/\/ponytail-/g) || []).length === 1);
+  check("切轻量是原地替换，没把旧 token 留在后面", f.draft === "/grill-me /ponytail-lite ");
+  check("追问的 token 没被动过", (f.draft.match(/\/grill-me/g) || []).length === 1);
+  check("下拉跟着变成轻量", f.shown === "轻量");
+
+  f.pick("off");
+  // 摘掉中间那个 token 后，它自己的尾分隔符会留下：`/grill-me ` —— 这正是
+  // 追问按钮单独开启时草稿的形态（`${GRILL_TOKEN} `），所以就是期望值。
+  check("关闭只摘 ponytail token，保留 /grill-me", f.draft === "/grill-me ");
+  check("关闭后下拉显示关闭", f.shown === "关闭" && f.on === false);
+  check("关闭没有把 /grill-me 也删掉", (f.draft.match(/\/grill-me/g) || []).length === 1);
+
+  const g = mountControl();
+  g.setDraftExternally("/grill-me 帮我看看这段 C#");
+  g.pick("ultra");
+  check("没有 token 时钉在最前面", g.draft === "/ponytail-ultra /grill-me 帮我看看这段 C#");
+  g.pick("full");
+  check("有 token 时原地替换（位置不变）", g.draft === "/ponytail-full /grill-me 帮我看看这段 C#");
+  check("正文一个字没动", g.draft.endsWith("帮我看看这段 C#"));
+}
+
+// ── 24. 与追问共存时的重钉与"删光即关闭" ──
+{
+  console.log("\n24. 共存时的重钉与关闭");
+  const f = mountControl();
+  f.pick("ultra");
+  f.setDraftExternally("/grill-me /ponytail-ultra 正文");
+  f.simulateSend();
+  check("发送后按档位重钉", f.draft === "/ponytail-ultra ");
+
+  const g = mountControl();
+  g.pick("ultra");
+  g.setDraftExternally("/grill-me /ponytail-ultra ");
+  g.setDraftExternally("");
+  check("用户删光（草稿里只剩手势 token、没正文）视为关闭", g.shown === "关闭" && g.on === false);
+  check("关闭后不重钉", g.draft === "");
+
+  const h = mountControl();
+  h.pick("lite");
+  h.setDraftExternally("/grill-me /ponytail-lite 正文还在");
+  h.setDraftExternally("");
+  check("有正文时发送仍按档位重钉", h.draft === "/ponytail-lite ");
+}
+
 report();

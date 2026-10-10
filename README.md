@@ -70,10 +70,18 @@ token 开销），只出现在 `/` 菜单和手势扫描里 —— 这正是这�
 - **两种方式都能关掉**：
   - 下拉里选「关闭」→ 摘掉 token，且**不会被重钉逻辑写回来**；
   - 把只有 token 的草稿删光 → 同样视为关闭（下拉会跟着变「关闭」）。
+    这里「只有 token」**包括别的插件的手势 token** —— 草稿是
+    `/grill-me /ponytail-ultra ` 时同样是「没有正文」，删光一样视为关闭。
 - **手动删掉 token 但正文还在**时，当前这条不再自动补；发送后按记忆的档位重钉 ——
   插件不会在你打字时抢草稿。
 - **草稿里的 token 是权威**：你手动把 token 改成 `/ponytail-lite`，下拉会跟着显示「轻量」，
   发送后也按 `lite` 重钉。
+- **与「追问」按钮共存**：草稿里可以同时有 `/grill-me` 和 `/ponytail-<档位>`
+  （例如 `/grill-me /ponytail-ultra 正文`），两个技能会**同时注入**，互不干扰。
+  本插件**只动自己的 token**：改档位是**原地替换**，关闭只摘自己那一个。
+  token 在草稿的**任意位置**都认得，不要求它在开头 —— 追问按钮是前插的，
+  锚定开头就会看不见自己后面那个 token，切档位时摘不掉旧的，草稿里堆出两个
+  ponytail token，宿主把两个技能都注入 → **多个档位同时生效**（这个 bug 修过）。
 - **从不替你发送**。插件只依赖 `slots`，不声明任何 remote 服务。
 
 为什么是「写进草稿」而不是「后台注入」：技能不是命令，`/ponytail` 走不了命令通道；
@@ -84,7 +92,7 @@ token 开销），只出现在 `/` 菜单和手势扫描里 —— 这正是这�
 ## 验收
 
 ```sh
-node test/offline-regression.mjs   # 95 条断言：草稿 token 全状态机 + 档位技能 + 宿主半技能解析
+node test/offline-regression.mjs   # 111 条断言：草稿 token 全状态机 + 档位技能 + 宿主半技能解析
 ```
 
 装好后在客户端里确认：
@@ -130,7 +138,7 @@ dsh-ponytail/
 │   ├── ponytail-lite/    # ┐
 │   ├── ponytail-full/    # │ 档位入口：只有 frontmatter 有意义，
 │   └── ponytail-ultra/   # ┘ 正文由 lib/index.js 从 ponytail/ 拼接
-└── test/                 # 离线回归（95 条断言）
+└── test/                 # 离线回归（111 条断言）
 ```
 
 零 npm 运行时依赖，不声明 `@deepseek-ai/*` peerDependencies —— 换机器、离线、镜像没同步
