@@ -107,12 +107,12 @@ function mountControl() {
   console.log("\n4. 选档位写入 token");
   const f = mountControl();
   f.pick("ultra");
-  check("草稿被钉上 /ponytail ultra", f.draft === "/ponytail ultra ");
+  check("草稿被钉上 /ponytail ultra", f.draft === "/ponytail-ultra ");
   check("触发器变为开启态且显示极简", f.on === true && f.shown === "极简");
   check("选档位没有发送任何消息", f.promptCalls === 0);
 
   f.pick("lite");
-  check("改档位会改写 token（不是叠加）", f.draft === "/ponytail lite ");
+  check("改档位会改写 token（不是叠加）", f.draft === "/ponytail-lite ");
   check("草稿里只有一个 /ponytail", (f.draft.match(/\/ponytail/g) || []).length === 1);
 }
 
@@ -122,10 +122,10 @@ function mountControl() {
   const f = mountControl();
   f.setDraftExternally("帮我看看这段 C# 哪里过度设计了");
   f.pick("full");
-  check("token 在正文之前（宿主只认空白边界 token）", f.draft === "/ponytail full 帮我看看这段 C# 哪里过度设计了");
+  check("token 在正文之前（宿主只认空白边界 token）", f.draft === "/ponytail-full 帮我看看这段 C# 哪里过度设计了");
 
   f.pick("ultra");
-  check("换档位后正文原样保留", f.draft === "/ponytail ultra 帮我看看这段 C# 哪里过度设计了");
+  check("换档位后正文原样保留", f.draft === "/ponytail-ultra 帮我看看这段 C# 哪里过度设计了");
 }
 
 // ── 6. 选「关闭」摘掉 token，保留正文 ──
@@ -134,7 +134,7 @@ function mountControl() {
   const f = mountControl();
   f.setDraftExternally("正文");
   f.pick("full");
-  check("先开启", f.draft === "/ponytail full 正文");
+  check("先开启", f.draft === "/ponytail-full 正文");
   f.pick("off");
   check("关闭后只剩用户正文", f.draft === "正文");
   check("触发器回到关闭态", f.on === false && f.shown === "关闭");
@@ -147,13 +147,13 @@ function mountControl() {
   console.log("\n7. 发送后自动重钉");
   const f = mountControl();
   f.pick("ultra");
-  f.setDraftExternally("/ponytail ultra 正文");
+  f.setDraftExternally("/ponytail-ultra 正文");
   f.simulateSend();
-  check("发送清空草稿后重新钉回 /ponytail ultra", f.draft === "/ponytail ultra ");
+  check("发送清空草稿后重新钉回 /ponytail ultra", f.draft === "/ponytail-ultra ");
   check("重钉后仍为开启态", f.on === true);
 
   f.remount();
-  check("输入框重挂载后不会重复叠加 token", f.draft === "/ponytail ultra ");
+  check("输入框重挂载后不会重复叠加 token", f.draft === "/ponytail-ultra ");
   check("重挂载后仍是开启态", f.on === true);
 }
 
@@ -174,10 +174,10 @@ function mountControl() {
   console.log("\n9. 手动改 token 时下拉跟随");
   const f = mountControl();
   f.pick("full");
-  f.setDraftExternally("/ponytail lite 正文");
+  f.setDraftExternally("/ponytail-lite 正文");
   check("下拉显示用户手动写的档位", f.shown === "轻量");
   f.simulateSend();
-  check("发送后按用户手写的档位重钉", f.draft === "/ponytail lite ");
+  check("发送后按用户手写的档位重钉", f.draft === "/ponytail-lite ");
   check("下拉仍显示轻量", f.shown === "轻量");
 }
 
@@ -197,10 +197,10 @@ function mountControl() {
   console.log("\n11. 宿主回填旧草稿");
   const f = mountControl();
   f.pick("ultra");
-  f.setDraftExternally("/ponytail ultra 正文");
+  f.setDraftExternally("/ponytail-ultra 正文");
   f.simulateSend();
-  f.simulateHostRestore("/ponytail ultra 正文");
-  check("回填后草稿就是回填内容（插件不二次改写）", f.draft === "/ponytail ultra 正文");
+  f.simulateHostRestore("/ponytail-ultra 正文");
+  check("回填后草稿就是回填内容（插件不二次改写）", f.draft === "/ponytail-ultra 正文");
   check("回填后仍为开启态", f.on === true);
 }
 
@@ -253,7 +253,10 @@ function mountControl() {
 
   const candidates = await provider.list({});
   const names = candidates.map((candidate) => candidate.name).sort();
-  check("列出三个技能", JSON.stringify(names) === JSON.stringify(["ponytail", "ponytail-audit", "ponytail-review"]));
+  check("列出六个技能（3 个功能技能 + 3 个档位技能）",
+    JSON.stringify(names) === JSON.stringify([
+      "ponytail", "ponytail-audit", "ponytail-full", "ponytail-lite", "ponytail-review", "ponytail-ultra",
+    ]));
   check("每个候选都有非空描述", candidates.every((candidate) => candidate.description.length > 20));
   check("候选不带正文（列举不读正文）", candidates.every((candidate) => candidate.content === undefined));
   check("provider 字段与提供方名一致", candidates.every((candidate) => candidate.provider === "dsh-ponytail-mode"));
@@ -263,7 +266,21 @@ function mountControl() {
   check("resourceBase 指向技能目录", definition.resourceBase.kind === "directory" && definition.resourceBase.path.endsWith("ponytail"));
   check("折叠块标量 description 解析正确（多行折成一行）",
     definition.description.includes("Forces the laziest solution that actually works"));
-  check("裸 /ponytail 视为 full（上游 argument-hint 语义）", definition.metadata["argument-hint"] === "[lite|full|ultra]");
+  check("上游 argument-hint 作为元数据透传（DSH 本身不解析它）", definition.metadata["argument-hint"] === "[lite|full|ultra]");
+
+  // ── 档位技能：整串变蓝靠的就是「整串是一个技能名」 ──
+  const levelCandidates = new Map(candidates.map((candidate) => [candidate.name, candidate]));
+  for (const [skillName, level] of [["ponytail-lite", "lite"], ["ponytail-full", "full"], ["ponytail-ultra", "ultra"]]) {
+    const candidate = levelCandidates.get(skillName);
+    check(`${skillName} 已注册且用户可调用`, candidate !== undefined && candidate.invocation.userInvocable === true);
+    check(`${skillName} 不对模型开放（不进技能目录）`, candidate.invocation.modelInvocable === false);
+    const levelDefinition = await provider.get(candidate, {});
+    check(`${skillName} 与候选同名（注册表要求）`, levelDefinition.name === skillName);
+    check(`${skillName} 正文含档位前导`, levelDefinition.content.startsWith(`> **本次强度：${level}**`));
+    check(`${skillName} 正文就是 ponytail 的完整正文（单一来源）`,
+      levelDefinition.content.endsWith(definition.content));
+    check(`${skillName} 描述来自自己的 SKILL.md`, levelDefinition.description.includes(level));
+  }
 
   const missing = await provider.get({ path: path.join(here, "..", "skills", "nope", "SKILL.md") }, {});
   check("不存在的技能返回 undefined 而不是抛错", missing === undefined);
@@ -288,7 +305,7 @@ function mountControl() {
   console.log("\n16. 回归：token 独占草稿时关闭");
   const f = mountControl();
   f.pick("full");
-  check("先开启，草稿里只有 token", f.draft === "/ponytail full ");
+  check("先开启，草稿里只有 token", f.draft === "/ponytail-full ");
   check("下拉显示标准", f.shown === "标准");
 
   f.pick("off");
@@ -303,7 +320,7 @@ function mountControl() {
   check("重挂载后下拉仍显示关闭", f.shown === "关闭");
 
   f.pick("ultra");
-  check("关闭后仍能重新开启", f.draft === "/ponytail ultra " && f.shown === "极简");
+  check("关闭后仍能重新开启", f.draft === "/ponytail-ultra " && f.shown === "极简");
 }
 
 // ── 17. 回归：手动把只有 token 的草稿删光 = 关闭 ──
@@ -311,7 +328,7 @@ function mountControl() {
   console.log("\n17. 回归：手动删光 token 视为关闭");
   const f = mountControl();
   f.pick("lite");
-  check("先开启", f.draft === "/ponytail lite ");
+  check("先开启", f.draft === "/ponytail-lite ");
   f.setDraftExternally("");
   check("手动删光后草稿保持为空（不重钉）", f.draft === "");
   check("下拉跟着变成关闭", f.shown === "关闭");
@@ -334,9 +351,9 @@ function mountControl() {
   console.log("\n19. 对照：带正文发送后仍重钉");
   const f = mountControl();
   f.pick("ultra");
-  f.setDraftExternally("/ponytail ultra 帮我看看这段");
+  f.setDraftExternally("/ponytail-ultra 帮我看看这段");
   f.simulateSend();
-  check("带正文发送后按档位重钉", f.draft === "/ponytail ultra ");
+  check("带正文发送后按档位重钉", f.draft === "/ponytail-ultra ");
   check("下拉仍显示极简", f.shown === "极简");
 }
 
@@ -353,6 +370,34 @@ function mountControl() {
   check("半透明菜单色以渐变层叠上去", /background-image:linear-gradient\(var\(--dsw-specific-menu/.test(menuRule));
   check("没有任何声明把菜单底色直接设成半透明 token",
     !/[;{]background(?:-color)?:var\(--dsw-specific-menu\)/.test(menuRule));
+}
+
+// ── 21. 兼容：旧的 /ponytail <档位> 写法仍然识别 ──
+// 上游 ponytail 的写法是 `/ponytail lite|full|ultra`，但输入框的 `/` 高亮只认
+// 「/ + 已注册技能名」，那种写法只有 `/ponytail` 会变蓝。主形式改成 `/ponytail-lite`
+// 之后，旧草稿里的旧写法仍要能识别，否则升级后草稿会"显示关闭但实际开着"。
+{
+  console.log("\n21. 兼容旧 token 写法");
+  const f = mountControl();
+  f.setDraftExternally("/ponytail ultra 正文");
+  check("旧写法仍被识别为开启态（极简）", f.shown === "极简" && f.on === true);
+  f.simulateSend();
+  check("发送后按旧写法里的档位重钉，并改用新形式", f.draft === "/ponytail-ultra ");
+  check("下拉仍显示极简", f.shown === "极简");
+}
+
+// ── 22. 新形式 token 的边界判定 ──
+{
+  console.log("\n22. 新形式 token 的边界");
+  const f = mountControl();
+  f.setDraftExternally("/ponytail-lite 正文");
+  check("/ponytail-lite 被识别为轻量", f.shown === "轻量" && f.on === true);
+  f.setDraftExternally("/ponytail-litex 正文");
+  check("/ponytail-litex 不被误认（长 token 不能退化成 /ponytail）", f.shown === "关闭");
+  f.setDraftExternally("/ponytail-full");
+  check("token 后没有空格也算（行尾终止）", f.shown === "标准");
+  f.setDraftExternally("/ponytail-ultra\n正文");
+  check("token 后接换行也算终止", f.shown === "极简");
 }
 
 report();
