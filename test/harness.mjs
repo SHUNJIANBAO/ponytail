@@ -199,9 +199,15 @@ export function loadClientPlugin(clientFile, extraModules = {}) {
     },
   };
   globalThis.localStorage = globalThis.window.localStorage;
+  // 记录注入的 <style> 节点，便于对 CSS 本身做断言（如"菜单背景必须不透明"）。
+  const styleNodes = [];
   globalThis.document = {
     getElementById: () => null,
-    createElement: () => ({ id: "", set textContent(_value) {} }),
+    createElement: () => {
+      const node = { id: "", textContent: "" };
+      styleNodes.push(node);
+      return node;
+    },
     head: { appendChild: () => {} },
     addEventListener: () => {},
     removeEventListener: () => {},
@@ -210,6 +216,7 @@ export function loadClientPlugin(clientFile, extraModules = {}) {
   new Function(fs.readFileSync(clientFile, "utf8"))();
   if (captured === null) throw new Error("插件没有向模块加载器注册自己");
   captured.react = reactStub;
+  captured.__styleText = () => styleNodes.map((node) => node.textContent).join("\n");
   return captured;
 }
 

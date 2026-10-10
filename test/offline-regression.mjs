@@ -340,4 +340,19 @@ function mountControl() {
   check("下拉仍显示极简", f.shown === "极简");
 }
 
+// ── 20. 回归：展开菜单必须不透明 ──
+// --dsw-specific-menu 在 Windows 暗色下是 #43454a73（45% 不透明），macOS 才被主题
+// 覆写成 #303136f0。直接拿它当 background，菜单会透出后面的输入栏。
+// 要求：实色底 + 把半透明菜单色用渐变叠上去。
+{
+  console.log("\n20. 回归：菜单背景不透明");
+  const css = plugin.__styleText();
+  const menuRule = (css.match(/\.dpi-menu\{[^}]*\}/) || [""])[0];
+  check("找到 .dpi-menu 规则", menuRule.length > 0);
+  check("有实色底 background-color", /background-color:var\(--dsw-alias-bg-base/.test(menuRule));
+  check("半透明菜单色以渐变层叠上去", /background-image:linear-gradient\(var\(--dsw-specific-menu/.test(menuRule));
+  check("没有任何声明把菜单底色直接设成半透明 token",
+    !/[;{]background(?:-color)?:var\(--dsw-specific-menu\)/.test(menuRule));
+}
+
 report();

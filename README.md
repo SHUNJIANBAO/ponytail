@@ -71,6 +71,9 @@ node test/offline-regression.mjs   # 66 条断言：草稿 token 全状态机 + 
 4. 选「关闭」→ token 被摘掉，**且不会再自己回来**；再发送一次，输入框保持空。
 5. 技能目录里能看到 `ponytail` / `ponytail-review` / `ponytail-audit`，
    且 `/ponytail ultra` 真的让模型进入了对应档位（不是只有文字在草稿里）。
+6. 展开的下拉窗口是**不透明**的 —— Windows 主题给 `--dsw-specific-menu` 的值是
+   45% 半透明（`#43454a73`，macOS 才被覆写成 94%），本插件用「实色底 +
+   半透明层渐变叠加」合成成完全不透明。
 
 ## 回滚
 
