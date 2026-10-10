@@ -3,7 +3,7 @@
 // 跑法：node test/offline-regression.mjs
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { createChecker, createSlotsCore, declareComposerSeats, loadClientPlugin, makeSlots, mount } from "./harness.mjs";
+import { createChecker, createSlotsCore, declareComposerSeats, loadClientPlugin, makeSlots, mount, registerSkillProviderFake } from "./harness.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const clientFile = path.join(here, "..", "lib", "client.js");
@@ -66,6 +66,8 @@ function mountControl() {
     clickTrigger() { trigger().props.onClick(); fixture.setProps({}); },
     pick(value) { this.clickTrigger(); option(value).props.onClick(); fixture.setProps({}); },
     setDraftExternally(text) { draft = text; fixture.setProps({}); },
+    /** 只重渲染若干轮（不改变任何状态），用来观察插件会不会"过一会自己动草稿"。 */
+    render() { fixture.setProps({}); },
     /** 模拟宿主 commit-draft：发送成功后整体清空草稿。 */
     simulateSend() { draft = ""; fixture.setProps({}); },
     /** 模拟宿主把带 token 的旧草稿回填。 */
@@ -244,7 +246,7 @@ function mountControl() {
   let provider = null;
   let threw = null;
   try {
-    host.apply({ skills: { registerProvider: (created) => { provider = created; } } });
+    host.apply({ skills: { registerProvider: registerSkillProviderFake((instance) => { provider = instance; }) } });
   } catch (error) { threw = error; }
   check("apply 未抛错且已注册提供方", threw === null && provider !== null);
   check("提供方名与 npm 上的 dsh-ponytail-skills 不撞车", provider.name === "dsh-ponytail-mode");
@@ -277,6 +279,65 @@ function mountControl() {
   f.pick("off");
   f.simulateSend();
   check("四轮选择 + 一次发送后仍无任何 remote 调用", f.promptCalls === 0);
+}
+
+// ── 16. 回归：草稿里只有 token 时，「关闭」必须真的关得掉 ──
+// 曾经的 bug：choose("off") 摘掉 token → 草稿变空 → 重钉 effect 读到 lastTokenRef
+// 里还记着的 "full"，立刻把 /ponytail full 又写回去，表现是"点关闭毫无反应"。
+{
+  console.log("\n16. 回归：token 独占草稿时关闭");
+  const f = mountControl();
+  f.pick("full");
+  check("先开启，草稿里只有 token", f.draft === "/ponytail full ");
+  check("下拉显示标准", f.shown === "标准");
+
+  f.pick("off");
+  check("选关闭后草稿被清空", f.draft === "");
+  check("选关闭后下拉显示关闭", f.shown === "关闭" && f.on === false);
+  check("没有被重钉逻辑写回去", f.draft === "");
+
+  f.render();
+  check("多渲染几轮后草稿仍为空", f.draft === "");
+  f.remount();
+  check("重挂载后草稿仍为空", f.draft === "");
+  check("重挂载后下拉仍显示关闭", f.shown === "关闭");
+
+  f.pick("ultra");
+  check("关闭后仍能重新开启", f.draft === "/ponytail ultra " && f.shown === "极简");
+}
+
+// ── 17. 回归：手动把只有 token 的草稿删光 = 关闭 ──
+{
+  console.log("\n17. 回归：手动删光 token 视为关闭");
+  const f = mountControl();
+  f.pick("lite");
+  check("先开启", f.draft === "/ponytail lite ");
+  f.setDraftExternally("");
+  check("手动删光后草稿保持为空（不重钉）", f.draft === "");
+  check("下拉跟着变成关闭", f.shown === "关闭");
+  f.remount();
+  check("重挂载后仍为空", f.draft === "");
+}
+
+// ── 18. 边界：只把 token 本身发出去 → 不重钉 ──
+{
+  console.log("\n18. 边界：只发 token 本身");
+  const f = mountControl();
+  f.pick("full");
+  f.simulateSend();
+  check("草稿保持为空", f.draft === "");
+  check("下拉显示关闭", f.shown === "关闭");
+}
+
+// ── 19. 对照：带正文的草稿发送后仍然重钉（别把持久模式一起修没了）──
+{
+  console.log("\n19. 对照：带正文发送后仍重钉");
+  const f = mountControl();
+  f.pick("ultra");
+  f.setDraftExternally("/ponytail ultra 帮我看看这段");
+  f.simulateSend();
+  check("带正文发送后按档位重钉", f.draft === "/ponytail ultra ");
+  check("下拉仍显示极简", f.shown === "极简");
 }
 
 report();

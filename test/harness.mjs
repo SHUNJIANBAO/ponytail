@@ -241,6 +241,29 @@ export function mount(reactStub, component, props) {
   };
 }
 
+/**
+ * 与真实 `ctx.skills.registerProvider` 一样严格的桩。
+ *
+ * 真实签名是 `registerProvider(create: (control) => SkillProvider)` —— 收的是**工厂函数**。
+ * 桩如果把参数直接当 provider 对象用，就会掩盖"传了对象而不是函数"这类契约错误
+ * （真踩过：真实宿主里报 `TypeError: create is not a function`，被 apply 的 try/catch
+ * 吞成一条 warn，表现成"技能静默消失"，而离线测试全绿）。
+ *
+ * @param assign - 收到实例化后的 provider 时调用。
+ * @returns 可直接放进假 ctx.skills 的 registerProvider。
+ */
+export function registerSkillProviderFake(assign) {
+  return (create) => {
+    if (typeof create !== "function") throw new TypeError("create is not a function");
+    const provider = create({ signal: new AbortController().signal, invalidate: () => {} });
+    if (provider === null || typeof provider !== "object") throw new TypeError("create() must return a skill provider");
+    if (typeof provider.name !== "string" || typeof provider.list !== "function" || typeof provider.get !== "function") {
+      throw new TypeError("a skill provider must expose name, list() and get()");
+    }
+    assign(provider);
+  };
+}
+
 /** 断言收集器：全部跑完统一报告并给退出码。 */
 export function createChecker() {
   const failures = [];

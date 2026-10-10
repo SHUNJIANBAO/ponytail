@@ -43,8 +43,11 @@ dsh plugin --profile <profile> add /abs/path/to/dsh-ponytail
 - **默认关闭**。下拉显示什么，草稿里就真有什么 —— 不会在你没选过的情况下替你打开 ponytail。
 - **档位按会话持久**（`localStorage`，键 `dsh-ponytail:<sessionId>`）。
 - **发送后自动重钉**：发送会把草稿清空，插件随即把当前档位重新钉回输入框（档位是持久模式）。
-  想彻底停用就选「关闭」。
-- **手动删掉 token 后，当前这条不再自动补**，等草稿再次被清空才重钉 —— 插件不会在你打字时抢草稿。
+- **两种方式都能关掉**：
+  - 下拉里选「关闭」→ 摘掉 token，且**不会被重钉逻辑写回来**；
+  - 把只有 token 的草稿删光 → 同样视为关闭（下拉会跟着变「关闭」）。
+- **手动删掉 token 但正文还在**时，当前这条不再自动补；发送后按记忆的档位重钉 ——
+  插件不会在你打字时抢草稿。
 - **草稿里的 token 是权威**：你手动把档位词改成 `lite`，下拉会跟着显示「轻量」，
   发送后也按 `lite` 重钉。
 - **从不替你发送**。插件只依赖 `slots`，不声明任何 remote 服务。
@@ -57,7 +60,7 @@ dsh plugin --profile <profile> add /abs/path/to/dsh-ponytail
 ## 验收
 
 ```sh
-node test/offline-regression.mjs   # 49 条断言：草稿 token 全状态机 + 宿主半技能解析
+node test/offline-regression.mjs   # 66 条断言：草稿 token 全状态机 + 宿主半技能解析
 ```
 
 装好后在客户端里确认：
@@ -65,8 +68,9 @@ node test/offline-regression.mjs   # 49 条断言：草稿 token 全状态机 + 
 1. 新会话里下拉显示「关闭」，输入框是空的。
 2. 选「极简」→ 输入框出现 `/ponytail ultra `；随便打一句编码需求并发送 → 模型按 ultra 风格回答。
 3. 发送后输入框自动变回 `/ponytail ultra `。
-4. 选「关闭」→ token 被摘掉；再发送一次，输入框保持空。
-5. 技能目录里能看到 `ponytail` / `ponytail-review` / `ponytail-audit`。
+4. 选「关闭」→ token 被摘掉，**且不会再自己回来**；再发送一次，输入框保持空。
+5. 技能目录里能看到 `ponytail` / `ponytail-review` / `ponytail-audit`，
+   且 `/ponytail ultra` 真的让模型进入了对应档位（不是只有文字在草稿里）。
 
 ## 回滚
 
